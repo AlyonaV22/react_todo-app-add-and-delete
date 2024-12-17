@@ -1,19 +1,25 @@
 import React from 'react';
 import { Status } from '../types/Status';
-import cn from 'classnames';
+import { Todo } from '../types/Todo';
 
 interface Props {
   filterType: Status;
-  onFiltered: (status: Status) => void;
+  todos: Todo[];
+  onFiltered: (filtStatus: Status) => void;
   countTodo: number;
+  loadedDelete: boolean;
+  loadedDeleteTodo: () => void;
 }
 
 export const Footer: React.FC<Props> = ({
   filterType,
   onFiltered,
   countTodo,
+  todos,
+  loadedDelete,
+  loadedDeleteTodo,
 }) => {
-  const filterStatus = Object.values(Status);
+  const hasLoaded = todos.some(todo => todo.completed);
 
   return (
     <footer className="todoapp__footer" data-cy="Footer">
@@ -22,25 +28,41 @@ export const Footer: React.FC<Props> = ({
       </span>
 
       <nav className="filter" data-cy="Filter">
-        {filterStatus.map(filtStatus => (
-          <a
-            key={filtStatus}
-            href={`#/${filtStatus !== Status.All ? filtStatus.toLowerCase() : ''}`} //className="filter__link selected"
-            className={cn('filter__link', {
-              selected: filtStatus === filterType,
-            })}
-            data-cy={`FilterLink${filtStatus}`}
-            onClick={() => onFiltered(filtStatus)}
-          >
-            {filtStatus}
-          </a>
-        ))}
+        <a
+          href="#/"
+          className={`filter__link ${filterType === Status.All ? 'selected' : ''}`}
+          data-cy="FilterLinkAll"
+          onClick={() => onFiltered(Status.All)}
+        >
+          All
+        </a>
+
+        <a
+          href="#/active"
+          className={`filter__link ${filterType === Status.Active ? 'selected' : ''}`}
+          data-cy="FilterLinkActive"
+          onClick={() => onFiltered(Status.Active)}
+        >
+          Active
+        </a>
+
+        <a
+          href="#/completed"
+          className={`filter__link ${filterType === Status.Completed ? 'selected' : ''}`}
+          data-cy="FilterLinkCompleted"
+          onClick={() => onFiltered(Status.Completed)}
+        >
+          Completed
+        </a>
       </nav>
 
       <button
         type="button"
         className="todoapp__clear-completed"
         data-cy="ClearCompletedButton"
+        disabled={loadedDelete || !hasLoaded}
+        style={{ visibility: !hasLoaded ? 'hidden' : 'visible' }}
+        onClick={loadedDeleteTodo}
       >
         Clear completed
       </button>
