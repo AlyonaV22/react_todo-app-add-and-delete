@@ -12,13 +12,10 @@ interface Props {
   hasNewTodo: boolean;
 }
 
-export const TodoCard: React.FC<Props> = ({
-  todo,
-  deleteItemTodo,
-  loadedDelete,
-  deleteTodoItem,
-  hasNewTodo,
-}) => {
+export const TodoCard: React.FC<Props> = props => {
+  const { todo, deleteItemTodo, loadedDelete, deleteTodoItem, hasNewTodo } =
+    props;
+
   return (
     <>
       <div data-cy="Todo" className={cn('todo', { completed: todo.completed })}>
@@ -46,7 +43,7 @@ export const TodoCard: React.FC<Props> = ({
 
         <div
           data-cy="TodoLoader"
-          className={cn('modal overlay', {
+          className={cn('modal', 'overlay', {
             'is-active':
               hasNewTodo ||
               (loadedDelete && todo.completed) ||

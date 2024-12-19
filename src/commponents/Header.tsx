@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { USER_ID } from '../api/todos';
 import { Todo } from '../types/Todo';
+import { USER_ID } from '../api/todos';
 
 interface Props {
   setErrorType: (errorMessage: string) => void;
@@ -13,16 +13,18 @@ interface Props {
   lengthOfTodo: number;
 }
 
-export const Header: React.FC<Props> = ({
-  setErrorType,
-  todoTask,
-  onChangeTodoTask,
-  newTodo,
-  deleteItemTodo,
-  loadedDelete,
-  addNewTodo,
-  lengthOfTodo,
-}) => {
+export const Header: React.FC<Props> = props => {
+  const {
+    setErrorType,
+    todoTask,
+    onChangeTodoTask,
+    newTodo,
+    deleteItemTodo,
+    loadedDelete,
+    addNewTodo,
+    lengthOfTodo,
+  } = props;
+
   const todoUseRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -34,7 +36,7 @@ export const Header: React.FC<Props> = ({
     ) {
       todoUseRef.current.focus();
     }
-  }, [lengthOfTodo, newTodo, deleteItemTodo, loadedDelete]);
+  }, [newTodo, deleteItemTodo, loadedDelete, lengthOfTodo]);
 
   const onSubmit = (event: React.FormEvent<HTMLElement>) => {
     event.preventDefault();
@@ -63,6 +65,7 @@ export const Header: React.FC<Props> = ({
           className="todoapp__toggle-all active"
           data-cy="ToggleAllButton"
         />
+
         <form onSubmit={onSubmit}>
           <input
             data-cy="NewTodoField"
@@ -70,9 +73,9 @@ export const Header: React.FC<Props> = ({
             className="todoapp__new-todo"
             placeholder="What needs to be done?"
             value={todoTask}
+            onChange={event => onChangeTodoTask(event.target.value)}
             ref={todoUseRef}
             disabled={Boolean(newTodo)}
-            onChange={event => onChangeTodoTask(event.target.value)}
           />
         </form>
       </header>

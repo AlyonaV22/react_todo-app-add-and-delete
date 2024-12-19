@@ -1,16 +1,15 @@
-/* eslint-disable jsx-a11y/label-has-associated-control */
-/* eslint-disable jsx-a11y/control-has-associated-label */
 import React, { useState, useEffect, useCallback } from 'react';
 import { UserWarning } from './UserWarning';
-import { getTodos, addTodo, deleteTodo, USER_ID } from './api/todos';
-import cn from 'classnames';
-import { Todo } from './types/Todo';
-import { ErrorType } from './types/Errors';
-import { Status } from './types/Status';
+import { addTodo, deleteTodo, getTodos, USER_ID } from './api/todos';
 
 import { Header } from './commponents/Header';
-import { TodoList } from './commponents/TodoList';
 import { Footer } from './commponents/Footer';
+import { Errors } from './commponents/Errors';
+import { TodoCard } from './commponents/TodoCard';
+
+import { Todo } from './types/Todo';
+import { Status } from './types/Status';
+import { ErrorType } from './types/Errors';
 
 export const App: React.FC = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
@@ -22,23 +21,22 @@ export const App: React.FC = () => {
   const [todoTask, setTodoTask] = useState('');
 
   useEffect(() => {
-    const timeoutId = setTimeout(() => setErrorType(''), 3000);
-    const fetchTodo = async () => {
-      try {
-        const loadedTodos = await getTodos();
+    const fetchTodos = async () => {
+      const timeoutId = setTimeout(() => setErrorType(''), 3000);
 
-        setTodos(loadedTodos);
+      try {
+        const todosData = await getTodos();
+
+        setTodos(todosData);
       } catch {
         setErrorType(ErrorType.UnableToLoad);
         clearTimeout(timeoutId);
       }
+
+      return () => clearTimeout(timeoutId);
     };
 
-    fetchTodo();
-
-    return () => {
-      clearTimeout(timeoutId);
-    };
+    fetchTodos();
   }, []);
 
   const countTodo = todos.filter(todo => !todo.completed).length;
@@ -59,18 +57,18 @@ export const App: React.FC = () => {
     setNewTodo(todoToAdd);
 
     try {
-      const hasTodo = await addTodo(todoToAdd);
+      const todoNew = await addTodo(todoToAdd);
 
-      setTodos(currentTodos => [...currentTodos, hasTodo]);
+      setTodos(currentTodos => [...currentTodos, todoNew]);
       setTodoTask('');
-    } catch (error) {
+    } catch {
       setErrorType(ErrorType.UnableToAdd);
     } finally {
       setNewTodo(null);
     }
   }, []);
 
-  const deleteTodoItem = async (todoId: number) => {
+  const deleteTodoItem = useCallback(async (todoId: number) => {
     setDeleteItemTodo(todoId);
 
     try {
@@ -81,43 +79,30 @@ export const App: React.FC = () => {
     } finally {
       setDeleteItemTodo(NaN);
     }
-  };
+  }, []);
 
-  const loadedDeleteTodo = async () => {
+  const loadedDeleteTodo = () => {
     setLoadedDelete(true);
+    const completedTodos = todos.filter(todo => todo.completed);
 
-    const loadedTodos = todos.filter(todo => todo.completed);
+    Promise.allSettled(
+      completedTodos.map(todo => deleteTodo(todo.id).then(() => todo)),
+    )
+      .then(values => {
+        values.forEach(val => {
+          if (val.status === 'rejected') {
+            setErrorType(ErrorType.UnableToDelete);
+          } else {
+            setTodos(currentTodos => {
+              const todoId = val.value as Todo;
 
-    try {
-      const results = await Promise.allSettled(
-        loadedTodos.map(todo => deleteTodo(todo.id)),
-      );
-
-      const failedDeletes = results.filter(
-        result => result.status === 'rejected',
-      );
-
-      if (failedDeletes.length > 0) {
-        setErrorType(ErrorType.UnableToDelete);
-      }
-
-      setTodos(currentTodos =>
-        currentTodos.filter(
-          todo => !loadedTodos.some(item => item.id === todo.id),
-        ),
-      );
-    } catch (error) {
-      setErrorType(ErrorType.UnableToLoad);
-    } finally {
-      setLoadedDelete(false);
-    }
+              return currentTodos.filter(todo => todo.id !== todoId.id);
+            });
+          }
+        });
+      })
+      .finally(() => setLoadedDelete(false));
   };
-
-  useEffect(() => {
-    const clearTimeOut = setTimeout(() => setErrorType(''), 3000);
-
-    return () => clearTimeout(clearTimeOut);
-  }, [errorType]);
 
   if (!USER_ID) {
     return <UserWarning />;
@@ -139,13 +124,26 @@ export const App: React.FC = () => {
           lengthOfTodo={todos.length}
         />
 
-        <TodoList
-          todos={todoFilter}
-          newTodo={newTodo}
-          deleteTodoItem={deleteTodoItem}
-          deleteItemTodo={deleteItemTodo}
-          loadedDelete={loadedDelete}
-        />
+        <section className="todoapp__main" data-cy="TodoList">
+          {todoFilter.map(todo => (
+            <TodoCard
+              key={todo.id}
+              todo={todo}
+              deleteItemTodo={deleteItemTodo}
+              loadedDelete={loadedDelete}
+              hasNewTodo={false}
+              deleteTodoItem={deleteTodoItem}
+            />
+          ))}
+
+          {newTodo && (
+            <TodoCard
+              todo={newTodo}
+              hasNewTodo={true}
+              deleteTodoItem={deleteTodoItem}
+            />
+          )}
+        </section>
 
         {todos.length > 0 && (
           <Footer
@@ -159,21 +157,7 @@ export const App: React.FC = () => {
         )}
       </div>
 
-      <div
-        data-cy="ErrorNotification"
-        className={cn(
-          'notification is-danger is-light has-text-weight-normal',
-          { hidden: !errorType },
-        )}
-      >
-        <button
-          data-cy="HideErrorButton"
-          type="button"
-          className="delete"
-          onClick={() => setErrorType('')}
-        />
-        {errorType}
-      </div>
+      <Errors errorType={errorType} clearError={() => setErrorType('')} />
     </div>
   );
 };
